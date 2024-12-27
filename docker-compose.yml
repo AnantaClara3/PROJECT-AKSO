@@ -1,0 +1,83 @@
+version: '3.9'
+name : my_docker_project
+
+services:
+  webserver: #web data html yang download
+    image: nginx:latest
+    container_name: nginx_server
+    ports:
+      - "8080:80"
+    volumes:
+      - ./web_data:/usr/share/nginx/html
+    networks:
+      - app_network
+    environment:
+      - TZ=Asia/Jakarta
+      - NGINX_HOST=localhost
+      - NGINX_PORT=8080
+    restart: always
+    depends_on:
+      - database
+      - wordpress
+
+  database:
+    image: mysql:latest
+    container_name: mysql_db
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: mydatabase
+      MYSQL_USER: user
+      MYSQL_PASSWORD: userpassword
+      MYSQL_ROOT_HOST: "%"
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - app_network
+    restart: always
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  wordpress: #yang dikirim dan di semat ayda prosesnya
+    image: wordpress:latest
+    container_name: wordpress_server
+    environment:
+      WORDPRESS_DB_HOST: database:3306
+      WORDPRESS_DB_NAME: mydatabase
+      WORDPRESS_DB_USER: user
+      WORDPRESS_DB_PASSWORD: userpassword
+    ports:
+      - "8081:80"
+    volumes:
+      - wp_data:/var/www/html
+    networks:
+      - app_network
+    restart: always
+    depends_on:
+      - database
+
+networks:
+  app_network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: "192.168.1.0/24"
+
+volumes:
+  web_data:
+    driver: local
+  db_data:
+    driver: local
+  wp_data:
+    driver: local
+
+configs:
+  custom_nginx_config:
+    file: ./nginx.conf
+  custom_mysql_config:
+    file: ./mysql.cnf
